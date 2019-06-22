@@ -112,15 +112,15 @@ function random_particles(particle_medium::P, particle_shape::S, box_shape::Shap
     bounding_rect = bounding_rectangle(box_shape)
     bounding_rect_size = SVector(bounding_rect.width, bounding_rect.height)
 
-    @printf("""\n
-        Generating %d randomly positioned %s shaped particles
-        Total particle volume: %0.5g
-        Inside %s of volume: %0.5g
-        Particle volume fraction: %0.5g
-        Bounding box volume: %0.5g
-        """, N, name(particle_shape), N*volume(particle_shape), name(box_shape),
-        volume(box_shape), volfrac, volume(bounding_rect)
-    )
+    #@printf("""\n
+    #    Generating %d randomly positioned %s shaped particles
+    #    Total particle volume: %0.5g
+    #    Inside %s of volume: %0.5g
+    #    Particle volume fraction: %0.5g
+    #    Bounding box volume: %0.5g
+    #    """, N, name(particle_shape), N*volume(particle_shape), name(box_shape),
+    #    volume(box_shape), volfrac, volume(bounding_rect)
+    #)
 
     # Allocate memory for particles
     L = length(current_particles)
