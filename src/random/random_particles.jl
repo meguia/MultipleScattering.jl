@@ -101,7 +101,7 @@ function random_particles(particle_medium::P, particle_shape::S, box_shape::Shap
     max_packing = if length(current_particles) > 0
         0.7854 - sum(volume.(current_particles))/volume(box_shape)
     else 0.7854
-    #end
+    end
     #if volfrac  > max_packing
     #    error("Specified volume fraction is larger than optimal packing of circles.")
     #end
