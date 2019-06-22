@@ -96,13 +96,15 @@ function random_particles(particle_medium::P, particle_shape::S, box_shape::Shap
 
     # Check volume fraction is not impossible
     volfrac = N * volume(particle_shape) / volume(box_shape)
+    # here the box_shape of the current particles can be different from the new particles
+    # so we eliminate this check
     max_packing = if length(current_particles) > 0
         0.7854 - sum(volume.(current_particles))/volume(box_shape)
     else 0.7854
-    end
-    if volfrac  > max_packing
-        error("Specified volume fraction is larger than optimal packing of circles.")
-    end
+    #end
+    #if volfrac  > max_packing
+    #    error("Specified volume fraction is larger than optimal packing of circles.")
+    #end
 
     # Create pseudorandom device with specified seed
     randgen = MersenneTwister(seed)
