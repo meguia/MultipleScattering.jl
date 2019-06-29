@@ -1,4 +1,4 @@
-const MAX_ATTEMPTS_TO_FIT_PARTICLE = 3000
+const MAX_ATTEMPTS_TO_FIT_PARTICLE = 30000
 
 
 random_particles(particle_medium::PhysicalProperties{T,Dim}, particle_shape::Shape{T,Dim}; kws...) where {T<:AbstractFloat,Dim} = random_particles(particle_medium, [particle_shape]; kws...)
