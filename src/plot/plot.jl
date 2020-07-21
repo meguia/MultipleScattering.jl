@@ -11,11 +11,10 @@ include("plot_moments.jl")
     for x_ind in x_indices
 
         fs = field_apply.(field(simres)[x_ind, ω_indices])
-        xguide = ((typeof(simres) <: FrequencySimulationResult) ? "ω" : "t")
-
+        
         @series begin
             label --> "$field_apply x=$(simres.x[x_ind])"
-            xlabel --> xguide
+            xguide --> ((typeof(simres) <: FrequencySimulationResult) ? "ω" : "t")
             (getfield(simres, 3)[ω_indices], fs)
         end
     end
