@@ -6,12 +6,14 @@
         field_apply = real, seriestype = :surface)
 
     x = [x[1] for x in simres.x[x_indices]]
-    y = [x[2] for x in simres.x[x_indices]]
+
+    # y will actually be z for 3D...
+    y = [x[end] for x in simres.x[x_indices]]
     ω = getfield(simres, 3)[ω_index]
 
     phase = exp(-im*ω*phase_time)
 
-    color --> :pu_or
+    seriescolor --> :pu_or
     title --> "Field for ω = $ω"
     seriestype --> seriestype
     aspect_ratio --> 1.0
@@ -43,7 +45,7 @@ end
     y = [x[2] for x in timres.x[x_indices]]
     t = getfield(timres, 3)[t_index]
 
-    color --> :pu_or
+    seriescolor --> :pu_or
     title --> "Field for time = $t"
     seriestype --> seriestype
     aspect_ratio --> 1.0

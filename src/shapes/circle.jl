@@ -9,10 +9,18 @@ struct Circle{T} <: Shape{T,2}
 end
 
 # Alternate constructors, where type is inferred naturally
-Circle(origin::Tuple{T,T}, radius::T) where {T} = Circle{T}(origin, radius)
-Circle(origin::Vector{T}, radius::T) where {T} = Circle{T}(origin, radius)
+Circle(origin::NTuple{2}, radius::T) where {T} = Circle{T}(origin, radius)
+Circle(origin::Vector, radius::T) where {T} = Circle{T}(origin, radius)
 # If no position is given, assume origin is at zero
 Circle(radius::T) where {T} = Circle{T}(SVector(zero(T),zero(T)), radius)
+
+import Base.show
+function show(io::IO, c::Circle)
+    # Circle template parameters can be determined entirely from the origin and radius so we do not need to print them
+    # Print is the style of the first constructor
+    write(io, "Circle($(c.origin.data), $(c.radius))")
+    return
+end
 
 name(shape::Circle) = "Circle"
 

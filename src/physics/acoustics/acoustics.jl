@@ -6,15 +6,28 @@ Physical properties for a homogenous isotropic acoustic medium with wavespeed (c
 
 Simulations in this medium produce scalar (1D) fields in Dim dimensions.
 """
-struct Acoustic{T,Dim} <: PhysicalProperties{T,Dim,1}
+struct Acoustic{T,Dim} <: PhysicalMedium{T,Dim,1}
     ρ::T # Density
     c::Complex{T} # Phase velocity
 end
 
+basisorder_to_linearindices(::Type{Acoustic{T,3}}, order::Int) where T = order^2:(order+1)^2
+basisorder_to_linearindices(::Type{Acoustic{T,2}}, order::Int) where T = [1, 2*order + 1]
+
+basislength_to_basisorder(::Type{Acoustic{T,3}},len::Int) where T = Int(sqrt(len) - 1)
+basislength_to_basisorder(::Type{Acoustic{T,2}},len::Int) where T = Int(T(len - 1) / T(2.0))
+
 # Constructor which supplies the dimension without explicitly mentioning type
-Acoustic(ρ::T,c::Complex{T},Dim::Integer) where {T} =  Acoustic{T,Dim}(ρ,c)
-Acoustic(ρ::T,c::T,Dim::Integer) where {T} =  Acoustic{T,Dim}(ρ,Complex{T}(c))
-Acoustic(Dim::Integer; ρ::T = 0.0, c::T = 0.0) where {T} =  Acoustic{T,Dim}(ρ,Complex{T}(c))
+Acoustic(ρ::T,c::Union{T,Complex{T}},Dim::Integer) where {T} =  Acoustic{T,Dim}(ρ,Complex{T}(c))
+Acoustic(Dim::Integer; ρ::T = 0.0, c::Union{T,Complex{T}} = 0.0) where {T} =  Acoustic{T,Dim}(ρ,Complex{T}(c))
+
+import Base.show
+function show(io::IO, p::Acoustic)
+    # Acoustic template paramaters can be determined entirely from the medium and shape so we do not need to print them
+    # Print is the style of the first constructor
+    write(io, "Acoustic($(p.ρ), $(p.c), $(spatial_dimension(p)))")
+    return
+end
 
 # Type aliases for convenience
 TwoDimAcoustic{T} = Acoustic{T,2}
@@ -28,29 +41,76 @@ Characteristic specific acoustic impedance (z₀) of medium
 """
 impedance(medium::Acoustic) = medium.ρ * medium.c
 
-include("circle.jl")
-include("concentric_capsule.jl")
-include("source.jl")
-include("boundary_data.jl")
-
-
-function basis_function(medium::Acoustic{T,2}, ω::T) where {T}
-    return function acoustic_basis_function(m::Integer, x::SVector{2,T})
-        r = norm(x)
-        θ = atan(x[2],x[1])
+function outgoing_basis_function(medium::Acoustic{T,2}, ω::T) where {T}
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ  = cartesian_to_radial_coordinates(x)
         k = ω/medium.c
-        hankelh1(m,k*r)*exp(im*θ*m)
+        [hankelh1(m,k*r)*exp(im*θ*m) for m = -order:order]
     end
 end
 
-"Basis function when inside a particle. Assumes particle is a circle, which approximately works for all shapes."
-function basis_function(p::Particle{T,2,Acoustic{T,2}}, ω::T) where {T}
-    return function acoustic_basis_function(m::Integer, x::SVector{2,T})
-        r = norm(x)
-        θ = atan(x[2],x[1])
-        k = ω/p.medium.c
-        besselj(m,k*r)*exp(im*θ*m)
+function outgoing_basis_function(medium::Acoustic{T,3}, ω::T) where {T}
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ, φ  = cartesian_to_radial_coordinates(x)
+        k = ω/medium.c
+
+        Ys = spherical_harmonics(order, θ, φ)
+        hs = [shankelh1(l,k*r) for l = 0:order]
+
+        lm_to_n = lm_to_spherical_harmonic_index
+
+        return [hs[l+1] * Ys[lm_to_n(l,m)] for l = 0:order for m = -l:l]
     end
+end
+
+regular_basis_function(p::Particle{T,Dim,Acoustic{T,Dim}}, ω::T) where {T,Dim} = regular_basis_function(p.medium, ω)
+
+function regular_basis_function(medium::Acoustic{T,2}, ω::Union{T,Complex{T}}) where T
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ  = cartesian_to_radial_coordinates(x)
+        k = ω/medium.c
+
+        return [besselj(m,k*r)*exp(im*θ*m) for m = -order:order]
+    end
+end
+
+function regular_basis_function(medium::Acoustic{T,3},  ω::Union{T,Complex{T}}) where T
+    return function (order::Integer, x::AbstractVector{T})
+        r, θ, φ  = cartesian_to_radial_coordinates(x)
+        k = ω/medium.c
+
+        Ys = spherical_harmonics(order, θ, φ)
+        js = [sbesselj(l,k*r) for l = 0:order]
+
+        lm_to_n = lm_to_spherical_harmonic_index
+
+        return [js[l+1] * Ys[lm_to_n(l,m)] for l = 0:order for m = -l:l]
+    end
+end
+
+
+# Check for material properties that don't make sense or haven't been implemented
+"""
+    check_material(p::Particle{T}, outer_medium::Acoustic{T})
+
+Checks if wave scattering from the particle `p` is physically viable given the material properties of `p` and its surrounding medium `outer_medium`.
+"""
+function check_material(p::Particle{T}, outer_medium::Acoustic{T}) where T <: AbstractFloat
+
+if isnan(abs(p.medium.c)*p.medium.ρ)
+    throw(DomainError("Particle's phase speed times density is not a number!"))
+elseif isnan(abs(outer_medium.c)*outer_medium.ρ)
+    throw(DomainError("The medium's phase speed times density is not a number!"))
+elseif iszero(outer_medium.c)
+    throw(DomainError("Wave propagation in a medium with zero phase speed is not defined"))
+elseif iszero(outer_medium.ρ) && iszero(p.medium.c*p.medium.ρ)
+    throw(DomainError("Scattering in a medium with zero density from a particle with zero density or zero phase speed is not defined"))
+elseif iszero(outer_radius(p))
+    throw(DomainError("Scattering from a circle of zero radius is not implemented yet"))
+end
+
+return true
+
 end
 
 """

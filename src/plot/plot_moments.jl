@@ -15,10 +15,10 @@
 # A failed attempt a creating a user defined series plot for the moments `y` with x-axis `x`.
 # """
 @recipe function plot_ribbon(results::AbstractVector{SimRes};
-        applytofield::Function = real,
-        num_moments::Int = 2,
+        field_apply = real,
+        num_moments = 2,
         use_moments = 1:min(num_moments,length(results)),
-        Y = statistical_moments(results, num_moments; applytofield=applytofield)[use_moments],
+        Y = statistical_moments(results, num_moments; field_apply=field_apply)[use_moments],
         x = results[1].ω,
         labs = ["mean" "std" "skew" "kurt"]) where {T,SimRes<:SimulationResult{T}}
 
@@ -57,7 +57,7 @@
       end
     end
 
-    for i in 1:min(15,length(results))
+    for i in 1:min(6,length(results))
       @series begin
         linealpha --> 0.2
         lab --> ""

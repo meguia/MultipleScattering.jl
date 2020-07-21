@@ -7,17 +7,28 @@ crucially, they will implement the [`t_matrix`](@ref) function
 abstract type AbstractParticle{T,Dim} end
 
 """
-    Particle(medium::PhysicalProperties, shape::Shape)
+    Particle(medium::PhysicalMedium, shape::Shape)
 
 Create particle with inner medium and shape (types and dimension must agree).
 """
-struct Particle{T<:AbstractFloat,Dim,P<:PhysicalProperties,S<:Shape} <: AbstractParticle{T,Dim}
+struct Particle{T<:AbstractFloat,Dim,P<:PhysicalMedium,S<:Shape} <: AbstractParticle{T,Dim}
     medium::P
     shape::S
     # Enforce that the Dims and Types are all the same
-    function Particle{T,Dim,P,S}(medium::P,shape::S) where {T,Dim,FieldDim,P<:PhysicalProperties{T,Dim,FieldDim},S<:Shape{T,Dim}}
+    function Particle{T,Dim,P,S}(medium::P,shape::S) where {T,Dim,FieldDim,P<:PhysicalMedium{T,Dim,FieldDim},S<:Shape{T,Dim}}
         new{T,Dim,P,S}(medium,shape)
     end
+end
+
+import Base.show
+function show(io::IO, p::Particle)
+    # Particle paramaters can be determined entirely from the medium and shape so we do not need to print them
+    write(io, "Particle(")
+    show(io, p.medium)
+    write(io, ", ")
+    show(io, p.shape)
+    write(io, ")")
+    return
 end
 
 """
@@ -25,11 +36,11 @@ end
 
 A particle within another particle, both with the same shape type and origin.
 """
-struct CapsuleParticle{T<:AbstractFloat,Dim,P<:PhysicalProperties,S<:Shape} <: AbstractParticle{T,Dim}
+struct CapsuleParticle{T<:AbstractFloat,Dim,P<:PhysicalMedium,S<:Shape} <: AbstractParticle{T,Dim}
     outer::Particle{T,Dim,P,S}
     inner::Particle{T,Dim,P,S}
     # Enforce that particles are concentric
-    function CapsuleParticle{T,Dim,P,S}(p2::Particle{T,Dim,P,S},p1::Particle{T,Dim,P,S}) where {T,Dim,P<:PhysicalProperties{T,Dim},S<:Shape}
+    function CapsuleParticle{T,Dim,P,S}(p2::Particle{T,Dim,P,S},p1::Particle{T,Dim,P,S}) where {T,Dim,P<:PhysicalMedium{T,Dim},S<:Shape}
         if origin(p1) != origin(p2) error("outer and inner particles should share the same origin") end
         if outer_radius(p1) >= outer_radius(p2)
             new{T,Dim,P,S}(p1,p2)
@@ -43,11 +54,11 @@ end
 AbstractParticles{T<:AbstractFloat,Dim} = Vector{Pt} where Pt<:AbstractParticle{T,Dim}
 
 # Convenience constructor which does not require explicit types/parameters
-function Particle(medium::P,s::S) where {Dim,T,P<:PhysicalProperties{T,Dim},S<:Shape{T,Dim}}
+function Particle(medium::P,s::S) where {Dim,T,P<:PhysicalMedium{T,Dim},S<:Shape{T,Dim}}
     Particle{T,Dim,P,S}(medium,s)
 end
 
-function CapsuleParticle(p1::Particle{T,Dim,P,S},p2::Particle{T,Dim,P,S}) where {T,Dim,S<:Shape,P<:PhysicalProperties}
+function CapsuleParticle(p1::Particle{T,Dim,P,S},p2::Particle{T,Dim,P,S}) where {T,Dim,S<:Shape,P<:PhysicalMedium}
     CapsuleParticle{T,Dim,P,S}(p1,p2)
 end
 

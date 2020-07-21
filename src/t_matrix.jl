@@ -1,19 +1,21 @@
 """
-Returns a 2M+1 by 2M+1 T-matrix for particle with specific shape, physical
-properties in a medium with a specific physical property at a specific angular
-wavenumber. See doc/T-matrix.pdf for details.
+    t_matrix(particle, medium, ω, order)
+
+Returns a finite T-matrix, with size depending on `order`, for a specific `particle` within a `medium` with specific physical properties.
 """
-function t_matrix(p::AbstractParticle{T,Dim}, medium::PhysicalProperties{T,Dim}, ω::T, M::Integer)::AbstractMatrix{T} where {T<:AbstractFloat,Dim}
+function t_matrix(p::AbstractParticle{T,Dim}, medium::PhysicalMedium{T,Dim}, ω::T, order::Integer)::AbstractMatrix{T} where {T<:AbstractFloat,Dim}
 
     error("T-matrix function is not yet written for $(name(p.medium)) $(name(p.shape)) in a $(name(medium)) medium")
 end
 
 """
+    get_t_matrices(PhysicalMedium, Vector{Particles}, ω, basis_order::Integer)
+
 Returns vector of T-matrices from a vector of particles in a specific domain.
 Can save computation if multiple of the same kind of particle are present in the
 vector.
 """
-function get_t_matrices(medium::PhysicalProperties, particles::AbstractParticles, ω::AbstractFloat, Nh::Integer)::Vector
+function get_t_matrices(medium::PhysicalMedium, particles::AbstractParticles, ω::AbstractFloat, basis_order::Integer)::Vector
 
     t_matrices = Vector{AbstractMatrix}(undef,length(particles))
 
@@ -37,7 +39,7 @@ function get_t_matrices(medium::PhysicalProperties, particles::AbstractParticles
 
         # Congruent particle was not found, we must calculate this t-matrix
         if !found
-            t_matrices[p_i] = t_matrix(p, medium, ω, Nh)
+            t_matrices[p_i] = t_matrix(p, medium, ω, basis_order)
             push!(unique_particles, particles[p_i])
             push!(unique_t_matrices, t_matrices[p_i])
         end

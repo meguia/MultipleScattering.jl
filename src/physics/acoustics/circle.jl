@@ -1,20 +1,14 @@
 AcousticCircleParticle{T} = Particle{T,2,Acoustic{T,2},Circle{T}}
 
-# T-matrix for a 2D circlular acoustic particle in a 2D acoustic medium
-function t_matrix(p::Particle{T,2,Acoustic{T,2},Circle{T}}, outer_medium::Acoustic{T,2}, ω::T, M::Integer)::Diagonal{Complex{T}} where T <: AbstractFloat
+"""
+    t_matrix(Particle{T,2,Acoustic{T,2},Circle{T}}, Acoustic{T,2}, ω, order)
+
+The T-matrix for a 2D circlular acoustic particle in a 2D acoustic medium.
+"""
+function t_matrix(p::Particle{T,2,Acoustic{T,2},Circle{T}}, outer_medium::Acoustic{T,2}, ω::T, basis_order::Integer)::Diagonal{Complex{T}} where T <: AbstractFloat
 
     # Check for material properties that don't make sense or haven't been implemented
-    if isnan(abs(p.medium.c)*p.medium.ρ)
-        throw(DomainError("Particle's phase speed times density is not a number!"))
-    elseif isnan(abs(outer_medium.c)*outer_medium.ρ)
-        throw(DomainError("The medium's phase speed times density is not a number!"))
-    elseif iszero(outer_medium.c)
-        throw(DomainError("Wave propagation in a medium with zero phase speed is not defined"))
-    elseif iszero(outer_medium.ρ) && iszero(p.medium.c*p.medium.ρ)
-        throw(DomainError("Scattering in a medium with zero density from a particle with zero density or zero phase speed is not defined"))
-    elseif iszero(outer_radius(p))
-        throw(DomainError("Scattering from a circle of zero radius is not implemented yet"))
-    end
+    check_material(p, outer_medium)
 
     "Returns a ratio used in multiple scattering which reflects the material properties of the particles"
     function Zn(m::Integer)::Complex{T}
@@ -42,27 +36,33 @@ function t_matrix(p::Particle{T,2,Acoustic{T,2},Circle{T}}, outer_medium::Acoust
     end
 
     # Get Zns for positive m
-    Zns = map(Zn,0:M)
+    Zns = map(Zn,0:basis_order)
 
     return - Diagonal(vcat(reverse(Zns), Zns[2:end]))
 end
 
+"""
+    internal_field(x::SVector{2,T}, p::Particle{T,2,Acoustic{T,2},Circle{T}}, sim::FrequencySimulation{T,2,Acoustic{T,2}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}})
 
-function internal_field(x::SVector{2,T}, p::Particle{T,2,Acoustic{T,2},Circle{T}}, sim::FrequencySimulation{T,2,Acoustic{T,2}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}}) where T
+The internal field for a 2D circlular acoustic particle in a 2D acoustic medium.
+"""
+function internal_field(x::AbstractVector{T}, p::Particle{T,2,Acoustic{T,2},Circle{T}}, sim::FrequencySimulation{T,2,Acoustic{T,2}}, ω::T, scattering_coefficients::AbstractVector{Complex{T}}) where T
 
     Nh = Int((length(scattering_coefficients) - one(T))/T(2.0)) #shorthand
     if iszero(p.medium.c) || isinf(abs(p.medium.c))
         return zero(Complex{T})
     else
         r = outer_radius(p)
-        k = ω/sim.medium.c
+        k = ω/sim.source.medium.c
         kp = ω/p.medium.c
-        Z = - t_matrix(p, sim.medium, ω, Nh)
-        internal_coef(m::Int) = scattering_coefficients[m+Nh+1] / (Z[m+Nh+1,m+Nh+1]*besselj(m,kp*r)) * (Z[m+Nh+1,m+Nh+1]*hankelh1(m,k*r) - besselj(m,k*r))
+        diagZ = - diag(t_matrix(p, sim.source.medium, ω, Nh))
 
-        inner_basis = basis_function(p, ω)
-        return sum(-Nh:Nh) do m
-            inner_basis(m, x-origin(p)) * internal_coef(m)
-        end
+        internal_coefs = scattering_coefficients ./
+            (diagZ .* besselj.(-Nh:Nh,kp*r)) .*
+            (diagZ .* hankelh1.(-Nh:Nh,k*r) - besselj.(-Nh:Nh,k*r))
+
+        inner_basis = regular_basis_function(p, ω)
+
+        return sum(inner_basis(Nh, x-origin(p)) .* internal_coefs)
     end
 end
