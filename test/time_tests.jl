@@ -1,12 +1,28 @@
 import StaticArrays: SVector
 
+@testset "Impulse operations" begin
+
+    ω_vec = 0.0:0.1:1.01
+    t_vec = 0.0:0.1:1.01
+
+    gauss = GaussianImpulse(maximum(ω_vec))
+    dirac = FreqDiracImpulse(ω_vec[1])
+    impulse = gauss +  dirac * 2.0
+
+    @test_throws(DomainError,[1]*dirac)
+
+    @test all(impulse.in_freq.(ω_vec) .== gauss.in_freq.(ω_vec) + 2.0 .* dirac.in_freq.(ω_vec))
+    @test all(impulse.in_time.(t_vec) .== gauss.in_time.(t_vec) + 2.0 .* dirac.in_time.(t_vec))
+
+end
+
 @testset "Time Result" begin
     sound_p = Acoustic(.1, 0.1 + 0.0im,2)
     particles = [Particle(sound_p,Circle([10.5,0.0], .5))]
 
     sound_sim = Acoustic(1., 1. + 0.0im,2)
     source = plane_source(sound_sim, [0.0,0.0], [1.0,0.0], 1.)
-    sim = FrequencySimulation(sound_sim, particles, source)
+    sim = FrequencySimulation(particles, source)
 
     ω_vec = 0.0:0.01:5.01
     @test LinRange(ω_vec) == t_to_ω(ω_to_t(ω_vec)) # only exact for length(ω_vec) = even number
@@ -74,7 +90,7 @@ end
 
     amp0 = 1.0
     source = plane_source(sound_sim, source_x, source_direction, amp0)
-    sim = FrequencySimulation(sound_sim, source)
+    sim = FrequencySimulation(source)
     simres = run(sim, [x_measure, x_measure + source_direction], ω)
     short_time = 1.:0.00005:1.5
     timres = frequency_to_time(simres; t_vec = short_time)
