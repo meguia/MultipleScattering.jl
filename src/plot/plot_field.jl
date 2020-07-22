@@ -13,7 +13,6 @@
 
     phase = exp(-im*ω*phase_time)
 
-    seriescolor --> :pu_or
     title --> "Field for ω = $ω"
     seriestype --> seriestype
     aspect_ratio --> 1.0
