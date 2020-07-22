@@ -45,7 +45,6 @@ end
     y = [x[2] for x in timres.x[x_indices]]
     t = getfield(timres, 3)[t_index]
 
-    seriescolor --> :pu_or
     title --> "Field for time = $t"
     seriestype --> seriestype
     aspect_ratio --> 1.0
